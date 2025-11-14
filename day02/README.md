@@ -4,7 +4,7 @@ Goal - The program should allow the user to input a DNA sequence, click "Transla
 
 Claude sonnet 3.5 in VS copilot was used to build the prgraom
 
-Propmpt provided to VS copilot to build the progrom:
+Prompt provided to VS copilot to build the progrom:
 Build a Python program using Tkinter that translates a DNA sequence into its corresponding amino acid sequence.
 
 Requirements:
