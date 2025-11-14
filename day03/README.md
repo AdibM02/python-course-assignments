@@ -1,6 +1,13 @@
 # Day 03: DNA to Protein Translator
 
 This directory contains an improved DNA-to-protein translation application with a modern GUI and comprehensive test suite.
+## Prompts sent to VS code copilot:
+Test program:
+Using pytest, lets try to build a test for the dna to protein program to validate that it works properly. 
+Utilizing external library in day02 program: 
+Lets try to build the dna to protein gui program again using 3rd-party library (dependencies) if there are such libraries that may make the code better - after impelementing, list me the external libraries that you used
+
+
 
 ## Overview
 
