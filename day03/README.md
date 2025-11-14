@@ -44,7 +44,7 @@ python --version
 
 ### Step 2: Install Required Dependencies
 
-Install the three main dependencies:
+Install the three main dependencies (start with **uv run** if you are using uv package):
 
 #### Option A: Install individually (pip)
 
