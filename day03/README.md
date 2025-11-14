@@ -6,7 +6,7 @@ Test program:
 Using pytest, lets try to build a test for the dna to protein program to validate that it works properly. 
 
 Utilizing external library in day02 program: 
-Lets try to build the dna to protein gui program again using 3rd-party library (dependencies) if there are such libraries that may make the code better - after implementing, list me the external libraries that you used
+Lets try to build the dna to protein gui program again using 3rd-party library (dependencies) if there are such libraries that may make the code better - after implementing, list me the external libraries that you used.
 
 
 
