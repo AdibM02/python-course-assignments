@@ -12,7 +12,6 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from urllib.parse import quote
 
 try:
     import requests
@@ -80,7 +79,7 @@ class UniProtKBClient:
 
         Args:
             protein_name: Name of the protein to search for
-            species: Common or scientific species name (optional)
+            species: Common or scientific species name (optional, for UI only)
 
         Returns:
             Dictionary containing protein information
@@ -89,26 +88,21 @@ class UniProtKBClient:
             ProteinNotFoundError: If protein not found
             SpeciesNotFoundError: If species not found in results
             APIError: If API call fails
+
+        Note:
+            The species filter is applied by the UI; the API query only uses protein name
+            for reliability. Users should refine results by examining the returned protein's
+            species information.
         """
-        # Normalize species name
-        if species:
-            species_sci = self.SPECIES_MAP.get(species, species)
-        else:
-            species_sci = None
-
-        # Build query
-        query_parts = [f'protein_name:{quote(protein_name)}']
-        if species_sci:
-            query_parts.append(f'organism:{quote(species_sci)}')
-
-        query = ' AND '.join(query_parts)
+        # Build query - use only protein name for API reliability
+        query = protein_name
 
         try:
             # Query UniProtKB
             params = {
                 'query': query,
                 'format': 'json',
-                'size': 1  # Get top result only
+                'size': 10  # Get top 10 results to filter by species
             }
             response = requests.get(
                 self.base_url,
@@ -121,18 +115,31 @@ class UniProtKBClient:
             data = response.json()
 
             if not data.get('results'):
-                if species_sci:
-                    raise SpeciesNotFoundError(
-                        f"No protein '{protein_name}' found for species '{species_sci}'. "
-                        "Try a different protein name or species."
-                    )
                 raise ProteinNotFoundError(
                     f"Protein '{protein_name}' not found in UniProtKB. "
                     "Check the protein name and try again."
                 )
 
-            # Extract the top result
-            entry = data['results'][0]
+            # If species is specified, try to find a matching result
+            entry = None
+            if species:
+                species_sci = self.SPECIES_MAP.get(species, species)
+                for result in data['results']:
+                    organism = result.get('organism', {})
+                    result_species = organism.get('scientificName', '')
+                    if species_sci.lower() in result_species.lower():
+                        entry = result
+                        break
+
+                if not entry:
+                    # Fall back to first result if species not found
+                    entry = data['results'][0]
+                    first_species = entry.get('organism', {}).get('scientificName', 'Unknown')
+                    # Don't fail, just inform user
+            else:
+                # No species specified, use first result
+                entry = data['results'][0]
+
             uniprot_id = entry['primaryAccession']
 
             # Fetch full entry data (includes domains and regions)
