@@ -1,0 +1,306 @@
+"""Business logic for UniProtKB Protein Finder.
+
+This module handles:
+- UniProtKB API queries
+- Protein and domain data extraction
+- JSON output generation
+- Error handling and validation
+"""
+
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+from urllib.parse import quote
+
+try:
+    import requests
+except ImportError:
+    requests = None
+
+try:
+    from Bio.SeqIO import uniprot_rest_client
+except ImportError:
+    uniprot_rest_client = None
+
+from config import config
+
+
+class ProteinNotFoundError(Exception):
+    """Raised when a protein is not found in UniProtKB."""
+    pass
+
+
+class SpeciesNotFoundError(Exception):
+    """Raised when a species is not found in the search results."""
+    pass
+
+
+class APIError(Exception):
+    """Raised when the UniProtKB API returns an error."""
+    pass
+
+
+class UniProtKBClient:
+    """Client for querying UniProtKB API."""
+
+    # Common species names with their NCBI Taxonomy IDs
+    SPECIES_MAP = {
+        'Human': 'Homo sapiens',
+        'Mouse': 'Mus musculus',
+        'Rat': 'Rattus norvegicus',
+        'Yeast': 'Saccharomyces cerevisiae',
+        'E. coli': 'Escherichia coli',
+        'Arabidopsis': 'Arabidopsis thaliana',
+        'Zebrafish': 'Danio rerio',
+        'Drosophila': 'Drosophila melanogaster',
+        'C. elegans': 'Caenorhabditis elegans',
+        'Chicken': 'Gallus gallus',
+    }
+
+    def __init__(self):
+        """Initialize the UniProtKB client."""
+        if requests is None:
+            raise ImportError(
+                "The 'requests' library is required. "
+                "Install it with: pip install requests"
+            )
+        self.base_url = config.uniprotkb_base_url
+        self.entry_url = config.uniprotkb_entry_url
+        self.contact_email = config.get_contact_email()
+        self.headers = {'User-Agent': f'ProteinFinder/1.0 ({self.contact_email})'}
+
+    def search_protein(
+        self,
+        protein_name: str,
+        species: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Search for a protein in UniProtKB.
+
+        Args:
+            protein_name: Name of the protein to search for
+            species: Common or scientific species name (optional)
+
+        Returns:
+            Dictionary containing protein information
+
+        Raises:
+            ProteinNotFoundError: If protein not found
+            SpeciesNotFoundError: If species not found in results
+            APIError: If API call fails
+        """
+        # Normalize species name
+        if species:
+            species_sci = self.SPECIES_MAP.get(species, species)
+        else:
+            species_sci = None
+
+        # Build query
+        query_parts = [f'protein_name:{quote(protein_name)}']
+        if species_sci:
+            query_parts.append(f'organism:{quote(species_sci)}')
+
+        query = ' AND '.join(query_parts)
+
+        try:
+            # Query UniProtKB
+            params = {
+                'query': query,
+                'format': 'json',
+                'size': 1  # Get top result only
+            }
+            response = requests.get(
+                self.base_url,
+                params=params,
+                headers=self.headers,
+                timeout=10
+            )
+            response.raise_for_status()
+
+            data = response.json()
+
+            if not data.get('results'):
+                if species_sci:
+                    raise SpeciesNotFoundError(
+                        f"No protein '{protein_name}' found for species '{species_sci}'. "
+                        "Try a different protein name or species."
+                    )
+                raise ProteinNotFoundError(
+                    f"Protein '{protein_name}' not found in UniProtKB. "
+                    "Check the protein name and try again."
+                )
+
+            # Extract the top result
+            entry = data['results'][0]
+            uniprot_id = entry['primaryAccession']
+
+            # Fetch full entry data (includes domains and regions)
+            full_entry = self._fetch_entry(uniprot_id)
+
+            return full_entry
+
+        except requests.RequestException as e:
+            raise APIError(f"API request failed: {str(e)}")
+
+    def _fetch_entry(self, uniprot_id: str) -> Dict[str, Any]:
+        """Fetch full UniProtKB entry data.
+
+        Args:
+            uniprot_id: UniProt accession ID
+
+        Returns:
+            Dictionary with entry data
+        """
+        try:
+            url = f'{self.entry_url}/{uniprot_id}'
+            params = {'format': 'json'}
+            response = requests.get(
+                url,
+                params=params,
+                headers=self.headers,
+                timeout=10
+            )
+            response.raise_for_status()
+            return response.json()
+
+        except requests.RequestException as e:
+            raise APIError(f"Failed to fetch entry {uniprot_id}: {str(e)}")
+
+    def extract_data(self, entry: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract protein name, sequence, and domains from a UniProtKB entry.
+
+        Args:
+            entry: Full UniProtKB entry JSON
+
+        Returns:
+            Dictionary with extracted data
+        """
+        # Extract basic info
+        protein_name = entry.get('uniProtkbId', 'Unknown')
+        organism = entry.get('organism', {})
+        species = organism.get('scientificName', 'Unknown')
+        sequence = entry.get('sequence', {}).get('value', '')
+
+        # Extract features (domains and regions)
+        domains = []
+        features = entry.get('features', [])
+
+        for feature in features:
+            feature_type = feature.get('type', '')
+            # Look for domain, region, and active site annotations
+            if feature_type in ['Domain', 'Region', 'Active site', 'Binding site']:
+                location = feature.get('location', {})
+                start = location.get('start', {}).get('value')
+                end = location.get('end', {}).get('value')
+
+                if start is not None and end is not None:
+                    # Extract domain sequence
+                    domain_seq = sequence[start - 1:end] if sequence else ''
+
+                    description = feature.get('description', feature_type)
+
+                    domains.append({
+                        'name': description,
+                        'type': feature_type,
+                        'start': start,
+                        'end': end,
+                        'sequence': domain_seq
+                    })
+
+        return {
+            'protein_name': protein_name,
+            'species': species,
+            'full_sequence': sequence,
+            'sequence_length': len(sequence),
+            'domains': domains
+        }
+
+    @staticmethod
+    def get_common_species() -> List[str]:
+        """Return list of common species names."""
+        return list(UniProtKBClient.SPECIES_MAP.keys())
+
+
+class ProteinDataExporter:
+    """Export protein data to JSON format."""
+
+    @staticmethod
+    def export_to_json(
+        data: Dict[str, Any],
+        filename: Optional[str] = None
+    ) -> str:
+        """Export protein data to a JSON file.
+
+        Args:
+            data: Dictionary with protein data
+            filename: Output filename (optional; auto-generated if not provided)
+
+        Returns:
+            Path to the created JSON file
+        """
+        if filename is None:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            protein_name = data.get('protein_name', 'protein').replace('_', '-')
+            filename = f'protein_{protein_name}_{timestamp}.json'
+
+        output_path = Path(config.get_output_dir()) / filename
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Prepare JSON structure
+        json_data = {
+            'protein_name': data.get('protein_name', ''),
+            'species': data.get('species', ''),
+            'full_sequence': data.get('full_sequence', ''),
+            'sequence_length': data.get('sequence_length', 0),
+            'domains': data.get('domains', []),
+            'exported_at': datetime.now().isoformat()
+        }
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+
+        return str(output_path)
+
+
+class ProteinSearchService:
+    """High-level service for protein searching and data export."""
+
+    def __init__(self):
+        """Initialize the service."""
+        self.client = UniProtKBClient()
+        self.exporter = ProteinDataExporter()
+
+    def search_and_export(
+        self,
+        protein_name: str,
+        species: Optional[str] = None
+    ) -> tuple[str, str]:
+        """Search for a protein and export data to JSON.
+
+        Args:
+            protein_name: Name of the protein
+            species: Species name (optional)
+
+        Returns:
+            Tuple of (json_file_path, status_message)
+
+        Raises:
+            ProteinNotFoundError, SpeciesNotFoundError, APIError
+        """
+        # Search for protein
+        entry = self.client.search_protein(protein_name, species)
+
+        # Extract data
+        data = self.client.extract_data(entry)
+
+        # Export to JSON
+        json_path = self.exporter.export_to_json(data)
+
+        status_message = (
+            f"✓ Successfully found protein '{data['protein_name']}' "
+            f"from {data['species']}. "
+            f"Data saved to:\n{json_path}"
+        )
+
+        return json_path, status_message
