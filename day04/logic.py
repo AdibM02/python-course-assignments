@@ -271,19 +271,42 @@ class ProteinDataExporter:
 
 
 class ProteinSearchService:
-    """High-level service for protein searching and data export."""
+    """High-level service for protein searching."""
 
     def __init__(self):
         """Initialize the service."""
         self.client = UniProtKBClient()
-        self.exporter = ProteinDataExporter()
+
+    def search(
+        self,
+        protein_name: str,
+        species: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Search for a protein and return extracted data.
+
+        Args:
+            protein_name: Name of the protein
+            species: Species name (optional)
+
+        Returns:
+            Dictionary with protein data (name, species, sequence, domains)
+
+        Raises:
+            ProteinNotFoundError, SpeciesNotFoundError, APIError
+        """
+        # Search for protein
+        entry = self.client.search_protein(protein_name, species)
+
+        # Extract and return data
+        data = self.client.extract_data(entry)
+        return data
 
     def search_and_export(
         self,
         protein_name: str,
         species: Optional[str] = None
     ) -> tuple[str, str]:
-        """Search for a protein and export data to JSON.
+        """Search for a protein and export data to JSON (legacy method).
 
         Args:
             protein_name: Name of the protein
@@ -295,14 +318,11 @@ class ProteinSearchService:
         Raises:
             ProteinNotFoundError, SpeciesNotFoundError, APIError
         """
-        # Search for protein
-        entry = self.client.search_protein(protein_name, species)
-
-        # Extract data
-        data = self.client.extract_data(entry)
+        data = self.search(protein_name, species)
 
         # Export to JSON
-        json_path = self.exporter.export_to_json(data)
+        exporter = ProteinDataExporter()
+        json_path = exporter.export_to_json(data)
 
         status_message = (
             f"✓ Successfully found protein '{data['protein_name']}' "
@@ -311,3 +331,4 @@ class ProteinSearchService:
         )
 
         return json_path, status_message
+

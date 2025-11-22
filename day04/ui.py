@@ -159,10 +159,11 @@ class ProteinFinderGUI:
         self._update_status('Searching...', 'blue')
 
         try:
-            json_path, message = self.service.search_and_export(
-                protein_name,
-                species
-            )
+            # Search without exporting
+            data = self.service.search(protein_name, species)
+            
+            # Format and display results
+            message = self._format_results(data)
             self._update_status(message, 'green')
 
         except ProteinNotFoundError as e:
@@ -186,6 +187,34 @@ class ProteinFinderGUI:
 
         finally:
             self.is_searching = False
+
+    def _format_results(self, data: dict) -> str:
+        """Format protein data for display.
+
+        Args:
+            data: Dictionary with protein information
+
+        Returns:
+            Formatted string for display
+        """
+        result = f"✓ FOUND: {data['protein_name']}\n"
+        result += f"Species: {data['species']}\n"
+        result += f"Sequence Length: {data['sequence_length']} amino acids\n"
+        result += f"\nFull Sequence:\n{data['full_sequence']}\n"
+        result += f"\n{'='*60}\n"
+        result += f"DOMAINS & REGIONS ({len(data['domains'])} found):\n"
+        result += f"{'='*60}\n"
+
+        for i, domain in enumerate(data['domains'], 1):
+            result += f"\n[{i}] {domain['name'] or domain['type']}\n"
+            result += f"    Type: {domain['type']}\n"
+            result += f"    Position: {domain['start']}-{domain['end']}\n"
+            if domain['sequence']:
+                seq_preview = domain['sequence'][:50]
+                seq_preview += "..." if len(domain['sequence']) > 50 else ""
+                result += f"    Sequence: {seq_preview}\n"
+
+        return result
 
     def _update_status(self, message: str, color: str = 'black'):
         """Update status text area.

@@ -1,91 +1,13 @@
 # UniProtKB Protein Finder - Day 04
 
-A Tkinter GUI application that searches UniProtKB for proteins, retrieves their sequences and domain information, and exports the data as structured JSON.
-
-## Prompts sent to VS code copilot (GPT-5 mini):
-
-In the folder day04, create a Python project structured into at least two files:
-
-ui.py — contains the GUI layer (Tkinter)
-
-logic.py — contains the "business logic" and external API handling
-
-Program Requirements
-
-Purpose
-
-Build a Tkinter GUI application that allows the user to enter:
-
-A protein name (free text input field)
-
-A species (dropdown list box of common species, with custom text entry option)
-
-The program will search UniProtKB for the matching protein and species.
-
-Search and Data Retrieval
-
-Use the Biopython library where applicable (e.g., sequence parsing).
-
-Query UniProtKB API to retrieve:
-
-The full protein sequence
-
-Its annotated regions/domains and their names
-
-For each domain/region, extract and store:
-
-Name/description
-
-Amino acid sequence
-
-The program should validate:
-
-If the protein name or species is not found, ask the user again with a clear message instead of crashing.
-
-Output Format
-
-Save the retrieved data into a structured .json file.
-
-Environment Variable Support
-
-Load configuration using environment variables stored in a file ignored by Git (e.g., .env), including:
-
-Contact email (required for API querying if needed)
-
-Any optional configuration flags
-
-Use standard environment variable loading approach (dotenv allowed).
-
-GUI Requirements
-
-Display:
-
-One text input field for protein name
-
-One dropdown list (plus manual override option) for species name
-
-A search button
-
-A status message area
-
-After execution:
-
-Inform the user if the search succeeded and where the JSON output was saved.
-
-Technical Notes
-
-Follow clean code best practices.
-
-Use exception handling with clear user-facing error messages.
-
-Ensure UI remains responsive (consider threading if needed).
+A Tkinter GUI application that searches UniProtKB for proteins, retrieves their sequences and domain information, and displays results directly in the interface.
 
 ## Features
 
 - **GUI Search Interface**: Enter protein name and select species (with custom entry option)
+- **Instant Results Display**: View search results directly in the GUI without saving to disk
 - **UniProtKB Integration**: Queries the UniProtKB REST API for protein data
-- **Domain Extraction**: Automatically extracts protein domains, regions, and active sites with sequences
-- **JSON Export**: Saves results in structured JSON format with full sequence and domain details
+- **Domain Display**: Shows protein domains, regions, and active sites with sequences
 - **Error Handling**: Validates input and provides clear user-facing error messages
 - **Threading**: Keeps UI responsive during API queries
 - **Environment Configuration**: Uses .env file for contact email and output settings
@@ -158,8 +80,11 @@ python day04/ui.py
 2. **Select Species** (optional): 
    - Choose from dropdown (Human, Mouse, E. coli, etc.)
    - Or type a custom species name
-3. **Click Search**: Queries UniProtKB and retrieves data
-4. **View Results**: Status area shows success/error messages and output file path
+3. **Click Search**: Queries UniProtKB and displays results instantly in the GUI
+4. **View Results**: 
+   - Full protein sequence displayed
+   - All domains and regions listed with positions and sequences
+   - Formatted output showing protein name, species, and domain information
 
 ### Example Searches
 
@@ -168,27 +93,31 @@ python day04/ui.py
 - **Protein**: "lactase" | **Species**: "Human"
 - **Protein**: "lacZ" | **Species**: "E. coli"
 
-## JSON Output Format
+## Results Display Format
 
-When a search succeeds, data is saved to `output/protein_<name>_<timestamp>.json`:
+Results are displayed directly in the GUI (no file downloads):
 
-```json
-{
-  "protein_name": "HBA_HUMAN",
-  "species": "Homo sapiens",
-  "full_sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHG...",
-  "sequence_length": 141,
-  "domains": [
-    {
-      "name": "Globin",
-      "type": "Domain",
-      "start": 1,
-      "end": 141,
-      "sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHG..."
-    }
-  ],
-  "exported_at": "2025-11-22T15:30:45.123456"
-}
+```
+✓ FOUND: HBB_HUMAN
+Species: Homo sapiens
+Sequence Length: 146 amino acids
+
+Full Sequence:
+MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHG...
+
+============================================================
+DOMAINS & REGIONS (7 found):
+============================================================
+
+[1] Globin
+    Type: Domain
+    Position: 1-146
+    Sequence: MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHG...
+
+[2] Heme iron coordination
+    Type: Active site
+    Position: 92-92
+    Sequence: H
 ```
 
 ## File Descriptions
@@ -201,16 +130,19 @@ Tkinter GUI layer:
 - Text input for protein name
 - Dropdown combobox for species selection
 - Search button that triggers background thread
-- Status display area with color coding
-- Error message dialogs
+- Live results display showing protein sequence and domains
+- Error message dialogs with color coding
 
 **Threading**: Search runs on a separate thread to keep UI responsive.
+**Display**: Results formatted and shown directly in the GUI (no file output).
 
 ### `logic.py`
 Business logic and API handling:
 - `UniProtKBClient`: Queries UniProtKB REST API
-- `ProteinSearchService`: High-level search and export orchestration
-- `ProteinDataExporter`: Converts data to JSON
+- `ProteinSearchService`: High-level search with optional export
+  - `search()`: Returns data for GUI display
+  - `search_and_export()`: Legacy method that also exports to JSON
+- `ProteinDataExporter`: Converts data to JSON (optional feature)
 - Custom exceptions for clear error handling
 - `SPECIES_MAP`: Maps common names to scientific names
 
