@@ -1,6 +1,14 @@
 # Day 03: DNA to Protein Translator
 
 This directory contains an improved DNA-to-protein translation application with a modern GUI and comprehensive test suite.
+## Prompts sent to VS code copilot (GPT-5 mini):
+Test program:
+Using pytest, lets try to build a test for the dna to protein program to validate that it works properly. 
+
+Utilizing external library in day02 program: 
+Lets try to build the dna to protein gui program again using 3rd-party library (dependencies) if there are such libraries that may make the code better - after implementing, list me the external libraries that you used.
+
+
 
 ## Overview
 
@@ -36,7 +44,7 @@ python --version
 
 ### Step 2: Install Required Dependencies
 
-Install the three main dependencies:
+Install the three main dependencies (start with **uv run** if you are using uv package):
 
 #### Option A: Install individually (pip)
 
