@@ -2,7 +2,8 @@
 
 A Tkinter GUI application that searches UniProtKB for proteins, retrieves their sequences and domain information, and exports the data as structured JSON.
 
-###Prompts sent to VS code copilot (GPT-5 mini):
+##Prompts sent to VS code copilot (GPT-5 mini):
+
 In the folder day04, create a Python project structured into at least two files:
 
 ui.py — contains the GUI layer (Tkinter)
