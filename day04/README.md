@@ -2,6 +2,84 @@
 
 A Tkinter GUI application that searches UniProtKB for proteins, retrieves their sequences and domain information, and exports the data as structured JSON.
 
+## Prompts sent to VS code copilot (GPT-5 mini):
+
+In the folder day04, create a Python project structured into at least two files:
+
+ui.py — contains the GUI layer (Tkinter)
+
+logic.py — contains the "business logic" and external API handling
+
+Program Requirements
+
+Purpose
+
+Build a Tkinter GUI application that allows the user to enter:
+
+A protein name (free text input field)
+
+A species (dropdown list box of common species, with custom text entry option)
+
+The program will search UniProtKB for the matching protein and species.
+
+Search and Data Retrieval
+
+Use the Biopython library where applicable (e.g., sequence parsing).
+
+Query UniProtKB API to retrieve:
+
+The full protein sequence
+
+Its annotated regions/domains and their names
+
+For each domain/region, extract and store:
+
+Name/description
+
+Amino acid sequence
+
+The program should validate:
+
+If the protein name or species is not found, ask the user again with a clear message instead of crashing.
+
+Output Format
+
+Save the retrieved data into a structured .json file.
+
+Environment Variable Support
+
+Load configuration using environment variables stored in a file ignored by Git (e.g., .env), including:
+
+Contact email (required for API querying if needed)
+
+Any optional configuration flags
+
+Use standard environment variable loading approach (dotenv allowed).
+
+GUI Requirements
+
+Display:
+
+One text input field for protein name
+
+One dropdown list (plus manual override option) for species name
+
+A search button
+
+A status message area
+
+After execution:
+
+Inform the user if the search succeeded and where the JSON output was saved.
+
+Technical Notes
+
+Follow clean code best practices.
+
+Use exception handling with clear user-facing error messages.
+
+Ensure UI remains responsive (consider threading if needed).
+
 ## Features
 
 - **GUI Search Interface**: Enter protein name and select species (with custom entry option)
