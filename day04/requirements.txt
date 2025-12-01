@@ -1,5 +1,14 @@
-Requirements for day04 UniProtKB Protein Finder.
+# UniProtKB Protein Finder Requirements
 
-The 'requests' library is required for making HTTP requests to the UniProtKB API.
+# Core dependencies
+requests>=2.28.0          # HTTP requests to UniProtKB REST API
 
-requests>=2.28.0
+# Optional dependencies (for enhanced functionality)
+python-dotenv>=0.19.0    # Load environment variables from .env file
+
+# The application uses Python's built-in modules for:
+# - Tkinter (GUI)
+# - threading (responsive UI)
+# - json (data parsing & export)
+# - csv (search history logging)
+# - pathlib (cross-platform file handling)

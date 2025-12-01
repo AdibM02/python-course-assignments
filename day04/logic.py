@@ -9,6 +9,7 @@ This module handles:
 
 import json
 import re
+import csv
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -230,7 +231,10 @@ class UniProtKBClient:
 
 
 class ProteinDataExporter:
-    """Export protein data to JSON format."""
+    """Export protein data to JSON format and manage search history."""
+
+    # Search history file path
+    HISTORY_FILE = Path(__file__).parent / 'output' / 'search_history.csv'
 
     @staticmethod
     def export_to_json(
@@ -269,6 +273,46 @@ class ProteinDataExporter:
 
         return str(output_path)
 
+    @staticmethod
+    def log_search_to_history(
+        protein_name: str,
+        species: Optional[str] = None,
+        success: bool = True
+    ) -> None:
+        """Log search query to CSV history file for tracking.
+
+        Args:
+            protein_name: Name of protein searched
+            species: Species filter used (optional)
+            success: Whether search succeeded
+
+        File format: timestamp, protein_name, species, success
+        """
+        history_file = Path(config.get_output_dir()) / 'search_history.csv'
+        history_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Check if file exists to determine if we need headers
+        file_exists = history_file.exists()
+
+        try:
+            with open(history_file, 'a', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+
+                # Write header if file is new
+                if not file_exists:
+                    writer.writerow(['timestamp', 'protein_name', 'species', 'success'])
+
+                # Write search record
+                writer.writerow([
+                    datetime.now().isoformat(),
+                    protein_name,
+                    species or 'All',
+                    'Yes' if success else 'No'
+                ])
+        except IOError as e:
+            # Silently fail to avoid blocking UI if file write fails
+            print(f"Warning: Could not log search to history: {e}")
+
 
 class ProteinSearchService:
     """High-level service for protein searching."""
@@ -276,6 +320,7 @@ class ProteinSearchService:
     def __init__(self):
         """Initialize the service."""
         self.client = UniProtKBClient()
+        self.exporter = ProteinDataExporter()
 
     def search(
         self,
@@ -294,12 +339,22 @@ class ProteinSearchService:
         Raises:
             ProteinNotFoundError, SpeciesNotFoundError, APIError
         """
-        # Search for protein
-        entry = self.client.search_protein(protein_name, species)
+        try:
+            # Search for protein
+            entry = self.client.search_protein(protein_name, species)
 
-        # Extract and return data
-        data = self.client.extract_data(entry)
-        return data
+            # Extract and return data
+            data = self.client.extract_data(entry)
+
+            # Log successful search
+            self.exporter.log_search_to_history(protein_name, species, success=True)
+
+            return data
+
+        except (ProteinNotFoundError, SpeciesNotFoundError, APIError) as e:
+            # Log failed search
+            self.exporter.log_search_to_history(protein_name, species, success=False)
+            raise
 
     def search_and_export(
         self,
@@ -321,8 +376,7 @@ class ProteinSearchService:
         data = self.search(protein_name, species)
 
         # Export to JSON
-        exporter = ProteinDataExporter()
-        json_path = exporter.export_to_json(data)
+        json_path = self.exporter.export_to_json(data)
 
         status_message = (
             f"✓ Successfully found protein '{data['protein_name']}' "

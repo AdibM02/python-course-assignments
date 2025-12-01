@@ -1,77 +1,55 @@
-# UniProtKB Protein Finder - Day 04
+# UniProtKB Protein Finder
 
-A Tkinter GUI application that searches UniProtKB for proteins, retrieves their sequences and domain information, and displays results directly in the interface.
+A modern, responsive Tkinter GUI application that searches UniProtKB for proteins, retrieves their sequences and domain information, and displays results instantly in the interface. Designed with clean code architecture and API integration best practices.
 
 ## Features
 
-- **GUI Search Interface**: Enter protein name and select species (with custom entry option)
-- **Instant Results Display**: View search results directly in the GUI without saving to disk
-- **UniProtKB Integration**: Queries the UniProtKB REST API for protein data
-- **Domain Display**: Shows protein domains, regions, and active sites with sequences
-- **Error Handling**: Validates input and provides clear user-facing error messages
-- **Threading**: Keeps UI responsive during API queries
-- **Environment Configuration**: Uses .env file for contact email and output settings
+- 🔍 **Smart Search Interface**: Enter protein name and optionally select species with dropdown suggestions
+- ⚡ **Instant Results**: View search results directly in the GUI with full protein sequences and domain information
+- 🧬 **UniProtKB Integration**: Queries the official UniProtKB REST API (free, no authentication needed)
+- 📊 **Domain Visualization**: Shows protein domains, regions, binding sites, and active sites with exact positions
+- 🚀 **Responsive Threading**: Background API calls keep UI responsive even with slow network
+- 🔧 **Configuration Management**: Optional `.env` file support with sensible defaults
+- 💾 **Export Capability**: Optional JSON export of search results for further analysis
+- ❌ **Robust Error Handling**: User-friendly error messages with troubleshooting tips
 
-## Project Structure
-
-```
-day04/
-├── main.py                 # Entry point to launch the application
-├── ui.py                   # Tkinter GUI layer
-├── logic.py                # Business logic and UniProtKB API handling
-├── config.py               # Configuration management (.env loader)
-├── .env.example            # Example environment file
-├── requirements.txt        # Python dependencies
-└── README.md              # This file
-```
-
-## Installation
+## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
-pip install -r day04/requirements.txt
+pip install -r requirements.txt
 ```
 
-Or manually:
+Or install manually:
 ```bash
 pip install requests
-```
-
-Optional (for enhanced functionality):
-```bash
-pip install python-dotenv
-pip install biopython
+pip install python-dotenv  # Optional: For .env file support
 ```
 
 ### 2. Configure Environment (Optional)
 
-Copy `.env.example` to `.env` and add your contact email:
+Copy `.env.example` to `.env` to customize settings:
 
 ```bash
-cp day04/.env.example day04/.env
+cp .env.example .env
 ```
 
-Edit `day04/.env`:
+Edit `.env` with your email and preferences:
 ```env
 CONTACT_EMAIL=your.email@example.com
 OUTPUT_DIR=./output
 ```
 
-**Why the contact email?**
-UniProtKB API requests should include a contact email. This helps them monitor usage and reach out if issues arise.
+**Why the contact email?**  
+UniProtKB API requests require a contact email. This helps them monitor usage and reach out if issues arise. See their [API documentation](https://www.uniprot.org/help/api).
 
 ## Usage
 
-### Run the Application
+### Launch the Application
 
 ```bash
-python day04/main.py
-```
-
-Or directly:
-```bash
-python day04/ui.py
+python main.py
 ```
 
 ### Using the GUI
@@ -120,37 +98,57 @@ DOMAINS & REGIONS (7 found):
     Sequence: H
 ```
 
+## Project Structure
+
+```
+.
+├── main.py                 # Application entry point
+├── ui.py                   # Tkinter GUI interface
+├── logic.py                # API client & business logic
+├── config.py               # Configuration & .env loader
+├── requirements.txt        # Python dependencies
+├── .env.example            # Example environment variables
+├── .gitignore             # Git ignore rules
+├── .github/
+│   └── copilot-instructions.md  # AI coding agent guidance
+├── output/                 # Export directory (auto-created)
+└── README.md              # This file
+```
+
 ## File Descriptions
 
 ### `main.py`
-Entry point that sets up the module path and launches the GUI.
+**Entry point** — Sets up module path and launches the GUI application.
 
 ### `ui.py`
-Tkinter GUI layer:
-- Text input for protein name
-- Dropdown combobox for species selection
-- Search button that triggers background thread
-- Live results display showing protein sequence and domains
-- Error message dialogs with color coding
+**GUI Layer** (`ProteinFinderGUI` class):
+- Text input for protein name search
+- Dropdown combobox with common species suggestions
+- Search button with background thread execution
+- Live results display (protein sequence + domains)
+- Status area with color-coded messages
+- Error dialogs for user guidance
 
-**Threading**: Search runs on a separate thread to keep UI responsive.
-**Display**: Results formatted and shown directly in the GUI (no file output).
+**Key pattern**: All long operations run on background threads via `_search_worker()` to keep UI responsive.
 
 ### `logic.py`
-Business logic and API handling:
-- `UniProtKBClient`: Queries UniProtKB REST API
-- `ProteinSearchService`: High-level search with optional export
-  - `search()`: Returns data for GUI display
-  - `search_and_export()`: Legacy method that also exports to JSON
-- `ProteinDataExporter`: Converts data to JSON (optional feature)
-- Custom exceptions for clear error handling
-- `SPECIES_MAP`: Maps common names to scientific names
+**Business Logic Layer**:
+- `UniProtKBClient`: REST API client for UniProtKB
+  - `search_protein()`: Query API, handle species filtering
+  - `extract_data()`: Parse protein/domain information
+- `ProteinSearchService`: High-level orchestration
+  - `search()`: Get protein data for GUI display
+  - `search_and_export()`: Search + JSON export (optional)
+- `ProteinDataExporter`: JSON file writing
+- Custom exceptions: `ProteinNotFoundError`, `SpeciesNotFoundError`, `APIError`
+- `SPECIES_MAP`: Common name → scientific name mapping
 
 ### `config.py`
-Configuration management:
-- Loads `.env` file (if python-dotenv is available)
-- Provides contact email and output directory settings
+**Configuration Management**:
+- Loads `.env` file if `python-dotenv` installed
+- Provides `contact_email` (required for API) and `output_dir` (optional)
 - Auto-creates output directory
+- Fallback defaults ensure functionality without config file
 
 ## API Integration
 
@@ -175,22 +173,30 @@ The application handles several error scenarios:
 ## Troubleshooting
 
 ### "ModuleNotFoundError: No module named 'requests'"
-Install: `pip install requests`
+```bash
+pip install requests
+```
 
 ### "Connection timeout" or "Failed to connect"
-- Check internet connection
-- Verify UniProtKB API is accessible: `https://rest.uniprot.org`
-- Try again after a delay
+1. Verify internet connection
+2. Check UniProtKB API status: https://rest.uniprot.org
+3. Check your firewall/proxy settings
+4. Try searching again after a delay (respects rate limits)
 
 ### GUI doesn't appear
-- Ensure Tkinter is installed (usually comes with Python)
-- On Linux: `sudo apt-get install python3-tk`
-- Try running: `python -c "import tkinter; print('OK')"`
+- **Windows/macOS**: Tkinter usually included; ensure Python installed from official source
+- **Linux**: `sudo apt-get install python3-tk`
+- Test Tkinter: `python -c "import tkinter; print('OK')"`
 
-### Output directory issues
-- Check `OUTPUT_DIR` in `.env`
-- Ensure the directory path is writable
-- Default: `./output` in the day04 folder
+### "Output directory issues"
+- Verify `OUTPUT_DIR` path in `.env` is writable
+- Default: `./output` (auto-created if missing)
+- Check file permissions if JSON export fails
+
+### Results not showing for a valid protein
+- Try exact protein ID instead of name (e.g., "HBB_HUMAN" instead of "hemoglobin")
+- Species filter may be too restrictive; try leaving it empty
+- Check UniProtKB website directly to confirm protein exists
 
 ## Code Architecture
 
@@ -222,14 +228,33 @@ Install: `pip install requests`
 - [Tkinter Documentation](https://docs.python.org/3/library/tkinter.html)
 - [Biopython](https://biopython.org/)
 
-## Author Notes
+## Learning & Development
 
-This application demonstrates:
-- Clean code practices with separation of concerns
-- Responsive GUI with threading
-- Error handling and validation
-- Configuration management
-- RESTful API integration
-- JSON data export
+### Architecture Highlights
+This project demonstrates professional Python patterns:
+- **Separation of Concerns**: Logic/UI/Config layers independent
+- **Threading Pattern**: Background API calls with thread-safe GUI updates
+- **Error Handling**: Custom exceptions with meaningful messages
+- **Configuration**: Environment-based config with sensible defaults
+- **RESTful API**: Modern async-style design
+- **File I/O**: JSON export with proper path handling
 
-Suitable for learning modern Python application architecture.
+### Testing the API
+Test the UniProtKB API directly:
+```bash
+curl "https://rest.uniprot.org/uniprotkb/search?query=hemoglobin&format=json"
+```
+
+### Contributing
+Feel free to fork, modify, and extend this project for your use cases.
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Support
+
+For issues or questions:
+1. Check the Troubleshooting section above
+2. Review UniProtKB API docs: https://www.uniprot.org/help/api
+3. Open an issue on GitHub
