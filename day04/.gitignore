@@ -137,3 +137,8 @@ dmypy.json
 output/
 *.json
 !.env.example
+
+# Course-specific documentation (keep in course repo, not in standalone)
+CONVERSION_SUMMARY.md
+SETUP_GUIDE.md
+COMPLETION_CHECKLIST.md
